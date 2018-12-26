@@ -22,7 +22,7 @@ public class ExampleSubsystem extends Subsystem
     }
 
     // TODO rename me (right click -> refactor -> rename)
-    public void setSpeed(int rpm)  // TODO pass any parameters needed to each method
+    public void setSpeed(int percentForward)  // TODO pass any parameters needed to each method
     {
         // TODO create any methods needed to control this Subsystem, called by Commands
     }

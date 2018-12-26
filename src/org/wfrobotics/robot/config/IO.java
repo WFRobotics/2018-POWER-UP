@@ -1,64 +1,148 @@
 package org.wfrobotics.robot.config;
 
-import java.util.ArrayList;
-
-import org.wfrobotics.reuse.commands.LEDSignal;
-import org.wfrobotics.reuse.commands.drive.swerve.DriveOff;
-import org.wfrobotics.reuse.commands.drive.swerve.TurnToInViewTarget;
-import org.wfrobotics.reuse.controller.ButtonFactory;
-import org.wfrobotics.reuse.controller.ButtonFactory.TRIGGER;
-import org.wfrobotics.reuse.controller.Panel;
-import org.wfrobotics.reuse.controller.Xbox;
-import org.wfrobotics.reuse.controller.Xbox.*;
-import org.wfrobotics.reuse.utilities.Utilities;
-import org.wfrobotics.robot.driveoi.Arcade.ArcadeIO;
-import org.wfrobotics.robot.driveoi.Mecanum.MecanumIO;
-import org.wfrobotics.robot.driveoi.Swerve.SwerveIO;
-import org.wfrobotics.robot.driveoi.Swerve.SwerveXbox;
-import org.wfrobotics.robot.driveoi.Tank.TankIO;
+import org.wfrobotics.reuse.commands.SignalHumanPlayer;
+import org.wfrobotics.reuse.commands.drive.TurnToHeading;
+import org.wfrobotics.reuse.config.AutoFactory;
+import org.wfrobotics.reuse.config.ButtonFactory;
+import org.wfrobotics.reuse.config.ButtonFactory.TRIGGER;
+import org.wfrobotics.reuse.config.HerdJoystick;
+import org.wfrobotics.reuse.config.Xbox;
+import org.wfrobotics.reuse.config.Xbox.DPAD;
+import org.wfrobotics.robot.auto.ModeScale;
+import org.wfrobotics.robot.commands.AutoLiftToBottom;
+import org.wfrobotics.robot.commands.AutoLiftToScale;
+import org.wfrobotics.robot.commands.intake.IntakeManual;
+import org.wfrobotics.robot.commands.intake.JawsToggle;
+import org.wfrobotics.robot.commands.intake.SmartOutake;
+import org.wfrobotics.robot.commands.lift.LiftGoHome;
 
 import edu.wpi.first.wpilibj.GenericHID.Hand;
-import edu.wpi.first.wpilibj.buttons.Button;
+import edu.wpi.first.wpilibj.Joystick;
 
 /** Maps controllers to Commands **/
-public class IO
+public final class IO
 {
     private static IO instance = null;
-
-    private final Xbox driver;
+    private final HerdJoystick driverThrottle;  // TODO Refactor - Make Button from JoyStick instead?
+    private final Joystick driverTurn;
     private final Xbox operator;
-    private final Panel panel;
-    
-    /* Only one of these should be instantiated at a time */
-    public TankIO tankIO;
-    public ArcadeIO arcadeIO;
-    public MecanumIO mecanumIO;
-    public SwerveIO swerveIO;
 
-    private ArrayList<Button> robotSpecific = new ArrayList<Button>();  // Keep buttons instantiated
-
-    private IO(Xbox driver, Xbox operator, Panel panel)
+    /** Create and configure controls for Drive Team */
+    private IO()
     {
-        this.driver = driver;
-        this.operator = operator;
-        this.panel = panel;
-        swerveIO = new SwerveXbox(driver, operator);
-
-        robotSpecific.add(ButtonFactory.makeButton(operator, BUTTON.LEFT_STICK, TRIGGER.WHEN_PRESSED, new LEDSignal(3)));
-
-        robotSpecific.add(ButtonFactory.makeButton(panel, Panel.BUTTON.YELLOW_T, TRIGGER.TOGGLE_WHEN_PRESSED, new DriveOff()));
-        robotSpecific.add(ButtonFactory.makeButton(panel, Panel.BUTTON.BLACK_B, TRIGGER.WHEN_PRESSED, new TurnToInViewTarget(.1)));
+        driverThrottle = new HerdJoystick(0);
+        driverTurn = new Joystick(1);
+        operator = new Xbox(2);
     }
+
+    /** Configure each Button to run a Command */
+    public void assignButtons()
+    {
+        // ---------------------- Autonomous ----------------------
+
+        ButtonFactory.makeButton(driverThrottle, HerdJoystick.BUTTON.BASE_TOP_RIGHT, TRIGGER.WHEN_PRESSED, AutoFactory.getInstance().makeCommand(Auto.modes));
+        ButtonFactory.makeButton(driverThrottle, HerdJoystick.BUTTON.BASE_MIDDLE_RIGHT, TRIGGER.WHEN_PRESSED, AutoFactory.getInstance().makeCommand(Auto.delays));
+        ButtonFactory.makeButton(driverThrottle, HerdJoystick.BUTTON.BASE_BOTTOM_RIGHT, TRIGGER.WHEN_PRESSED, AutoFactory.getInstance().makeCommand(Auto.positions));
+
+        // ------------------------- Drive ------------------------
+
+        // ------------------------ Intake ------------------------
+
+        ButtonFactory.makeButton(operator, Xbox.AXIS.RIGHT_TRIGGER, .1, TRIGGER.WHILE_HELD, new IntakeManual());
+        ButtonFactory.makeButton(operator, Xbox.AXIS.LEFT_TRIGGER, .1, TRIGGER.WHILE_HELD, new IntakeManual());
+        ButtonFactory.makeButton(operator, Xbox.BUTTON.LB, TRIGGER.WHEN_PRESSED, new JawsToggle());
+        ButtonFactory.makeButton(operator, Xbox.BUTTON.B, TRIGGER.WHEN_PRESSED, new SmartOutake());
+
+        // ------------------------- Lift -------------------------
+
+        ButtonFactory.makeButton(operator, Xbox.BUTTON.Y, TRIGGER.WHEN_PRESSED, new AutoLiftToScale());
+        ButtonFactory.makeButton(operator, Xbox.BUTTON.A, TRIGGER.WHEN_PRESSED, new AutoLiftToBottom());
+        ButtonFactory.makeButton(operator, Xbox.BUTTON.X, TRIGGER.WHEN_PRESSED, new LiftGoHome(-.3, 10));
+
+        // -------------------- Super Structure -------------------
+
+        ButtonFactory.makeButton(operator, Xbox.DPAD.RIGHT, TRIGGER.WHILE_HELD, new SignalHumanPlayer());
+
+        // ------------------------ Debug -------------------------
+
+        //        ButtonFactory.makeButton(operator, Xbox.BUTTON.START, TRIGGER.WHEN_PRESSED, new ModeTestPathVelocity());
+        //        ButtonFactory.makeButton(operator, Xbox.BUTTON.BACK, TRIGGER.WHEN_PRESSED, new DrivePathTest(17.0 * 12.0, 0.0 * 12.0));
+        ButtonFactory.makeButton(operator, Xbox.BUTTON.START, TRIGGER.WHEN_PRESSED, new ModeScale());
+        //        ButtonFactory.makeButton(operator, Xbox.BUTTON.BACK, TRIGGER.WHEN_PRESSED, new ModeOppisitScalse());
+        ButtonFactory.makeButton(operator, Xbox.BUTTON.BACK, TRIGGER.WHEN_PRESSED, new TurnToHeading(130.0));
+        //        ButtonFactory.makeButton(operator, Xbox.BUTTON.BACK, TRIGGER.WHEN_PRESSED, new TuningTrajectory());
+        //        ButtonFactory.makeButton(operator, Xbox.BUTTON.BACK, TRIGGER.TOGGLE_WHEN_PRESSED, new BlinkInArea(60.0, 36.0, 36.0, 60.0));
+        //        ButtonFactory.makeButton(operator, Xbox.BUTTON.START, TRIGGER.WHEN_PRESSED, new CharacterizeDrivetrain());
+    }
+
+    // ------------------- Robot-specific --------------------
+
+    public double getIntakeIn()
+    {
+        return operator.getTrigger(Hand.kRight);
+    }
+
+    public double getIntakeOut()
+    {
+        return operator.getTrigger(Hand.kLeft);
+    }
+
+    public double getWristStick()
+    {
+        return operator.getAxis(Xbox.AXIS.LEFT_Y);
+    }
+
+    public double getLiftStick()
+    {
+        return operator.getAxis(Xbox.AXIS.RIGHT_Y);
+    }
+
+    public double getWinchPercent()
+    {
+        int val = operator.getDpad();
+        double speed = 0.0;
+
+        if (val == DPAD.UP.get() || val == DPAD.UP_LEFT.get() || val == DPAD.UP_RIGHT.get())
+        {
+            speed = 1.0;
+        }
+        else if (val == DPAD.DOWN.get() || val == DPAD.DOWN_LEFT.get() || val == DPAD.DOWN_RIGHT.get())
+        {
+            speed = -1.0;
+        }
+
+        return speed;
+    }
+
+    public boolean isLiftOverrideRequested()
+    {
+        return  Math.abs(getLiftStick()) > .15;
+    }
+
+    // ------------------------ Reuse ------------------------
 
     public static IO getInstance()
     {
-        if (instance == null) { instance = new IO(new Xbox(0), new Xbox(1), new Panel(2)); }
+        if (instance == null)
+        {
+            instance = new IO();
+        }
         return instance;
     }
-    
-    public int getAutonomousSide()
+
+    public double getThrottle()
     {
-        return panel.getRotary();
+        return -driverThrottle.getY();
+    }
+
+    public double getTurn()
+    {
+        return driverTurn.getRawAxis(0);
+    }
+
+    public boolean getDriveQuickTurn()
+    {
+        return Math.abs(getThrottle()) < 0.1;
     }
 
     public void setRumble(boolean rumble)
@@ -66,7 +150,5 @@ public class IO
         float state = (rumble) ? 1 : 0;
         operator.setRumble(Hand.kLeft, state);
         operator.setRumble(Hand.kRight, state);
-        driver.setRumble(Hand.kLeft, state);
-        driver.setRumble(Hand.kRight, state);
     }
 }

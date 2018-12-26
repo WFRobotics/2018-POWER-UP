@@ -14,9 +14,9 @@ public class ExampleStopCommand extends Command
 
     protected void execute()
     {
-        int rpm = 0;
+        int percentForward = 0;
 
-        Robot.prototypeSubsystem.setSpeed(rpm);
+        Robot.prototypeSubsystem.setSpeed(percentForward);
     }
 
     protected boolean isFinished()

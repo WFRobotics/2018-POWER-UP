@@ -1,107 +1,43 @@
 package org.wfrobotics.robot;
 
+import org.wfrobotics.reuse.EnhancedRobot;
+import org.wfrobotics.reuse.hardware.LEDs;
+import org.wfrobotics.reuse.hardware.Blinkin;
+import org.wfrobotics.reuse.hardware.lowleveldriver.BlinkinPatterns.PatternName;
 import org.wfrobotics.reuse.subsystems.vision.CameraServer;
-import org.wfrobotics.reuse.utilities.DashboardView;
-import org.wfrobotics.reuse.utilities.HerdLogger;
-import org.wfrobotics.robot.config.Autonomous;
-import org.wfrobotics.robot.config.IO;
-import org.wfrobotics.reuse.subsystems.swerve.SwerveSubsystem;
-import org.wfrobotics.robot.subsystems.LED;
+import org.wfrobotics.reuse.subsystems.vision.VisionProcessor;
+import org.wfrobotics.robot.config.MatchState2018;
+import org.wfrobotics.robot.subsystems.Intake;
+import org.wfrobotics.robot.subsystems.Lift;
+import org.wfrobotics.robot.subsystems.Winch;
+import org.wfrobotics.robot.subsystems.Wrist;
 
-import edu.wpi.first.wpilibj.DriverStation.Alliance;
-import edu.wpi.first.wpilibj.SampleRobot;
-import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.command.Command;
-import edu.wpi.first.wpilibj.command.Scheduler;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
-
-public class Robot extends SampleRobot
+/**
+ * Robot: Victor - 2018
+ * @author Team 4818 The Herd<p>STEM Alliance of Fargo Moorhead
+ * */
+public final class Robot extends EnhancedRobot
 {
-    private final HerdLogger log = new HerdLogger(Robot.class);
-    private final Scheduler scheduler = Scheduler.getInstance();
-    private final RobotState state = RobotState.getInstance();
-    
-    private LED leds;
-    public static SwerveSubsystem driveSubsystem;
-    public static DashboardView dashboardView;
-    
-    public static IO controls;
+    public static LEDs leds = new Blinkin(9, PatternName.Yellow);
+    public final CameraServer visionServer = CameraServer.getInstance();
+    VisionProcessor processor = VisionProcessor.getInstance();
 
-    Command autonomousCommand;
-    double lastPeriodicTime = 0;
-
-    public void robotInit()
+    protected void registerRobotSpecific()
     {
-        driveSubsystem = new SwerveSubsystem();
-        dashboardView = new DashboardView();
-        leds = LED.getInstance();
+        visionServer.register(processor);
 
-        controls = IO.getInstance();  // IMPORTANT: Initialize IO after subsystems, so all subsystem parameters passed to commands are initialized
+        RobotState.getInstance().resetVisionState();
 
-        // TODO default config?
-        CameraServer.getInstance();
+        subsystems.register(Intake.getInstance());
+        subsystems.register(Lift.getInstance());
+        subsystems.register(Winch.getInstance());
+        subsystems.register(Wrist.getInstance());
     }
 
-    public void operatorControl()
+    @Override
+    public void disabledPeriodic()
     {
-        if (autonomousCommand != null) autonomousCommand.cancel();
-        leds.set(LED.defaultLEDEffect);
-
-        while (isOperatorControl() && isEnabled())
-        {
-            allPeriodic();
-        }
-    }
-
-    public void autonomous()
-    {
-        leds.set(leds.getAllianceEffect());
-        autonomousCommand =  Autonomous.setupSelectedMode();
-        if (autonomousCommand != null) autonomousCommand.start();
-
-        while (isAutonomous() && isEnabled())
-        {
-            allPeriodic();
-        }
-    }
-
-    public void disabled()
-    {
-        leds.set(LED.defaultLEDEffect);
-
-        while (isDisabled())
-        {
-            driveSubsystem.zeroGyro();
-            log.info("TeamColor", (m_ds.getAlliance() == Alliance.Red) ? "Red" : "Blue");
-
-            allPeriodic();
-        }
-    }
-
-    public void test()
-    {
-        while (isTest() && isEnabled())
-        {
-            allPeriodic();
-        }
-    }
-
-    private void allPeriodic()
-    {
-        log.info("Drive", driveSubsystem);
-        log.info("Battery", m_ds.getBatteryVoltage());
-        state.logState();
-
-        double start = Timer.getFPGATimestamp();
-        scheduler.run();
-        //log.debug("Periodic Time", getPeriodicTime(start));
-        SmartDashboard.putNumber("Periodic Time ", Timer.getFPGATimestamp() - start);
-    }
-
-    /** Should be <= 20ms, the rate the driver station pings with IO updates. This assumes using closed loop CANTalon's or sensors/PID are all on our fast service thread to prevent latency */
-    @SuppressWarnings("unused")
-    private String getPeriodicTime(double start)
-    {
-        return String.format("%.1f ms", (Timer.getFPGATimestamp() - start) * 1000);
+        MatchState2018.getInstance().update();  // Need game-specific data
+        super.disabledPeriodic();
     }
 }

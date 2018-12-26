@@ -1,0 +1,7 @@
+
+bin/*
+build/*
+*.orig
+dist/*
+sysProps.xml
+lib/User_Libraries.properties
